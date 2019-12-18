@@ -1,0 +1,13 @@
+---
+- name: Install roundcube package
+  package:
+    name: "{{ roundcube_package }}"
+    state: present
+
+- name: Deploy roundcube config template
+  template:
+    src: templates/defaults.inc.php.j2
+    dest: /var/www/roundcube/config/defaults.inc.php
+    owner: www-data
+    group: www-data
+    mode: '0644'
