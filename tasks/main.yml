@@ -2,7 +2,7 @@
 - name: Install roundcube package
   package:
     name: "{{ roundcube_package }}"
-    state: present
+    state: latest
 
 - name: Deploy roundcube config template
   template:
