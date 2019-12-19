@@ -11,3 +11,11 @@
     owner: www-data
     group: www-data
     mode: '0644'
+
+- name: Link logs to a sane location
+  file:
+    src: '/var/www/roundcube/logs'
+    dest: '/var/log/roundcube'
+    owner: www-data
+    group: www-data
+    state: link

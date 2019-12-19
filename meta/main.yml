@@ -2,8 +2,9 @@
 galaxy_info:
   author: 'David Wahlstrom'
   description: 'Deploy RoundCubeMail'
+  role_name: 'roundcube'
   license: BSD
-  min_ansible_version: '2.4'
+  min_ansible_version: '2.7'
 
   platforms:
   - name: Ubuntu
