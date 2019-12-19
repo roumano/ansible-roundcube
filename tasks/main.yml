@@ -1,8 +1,9 @@
 ---
 - name: Install roundcube package
-  package:
+  apt:
     name: "{{ roundcube_package }}"
-    state: latest
+    state: "{{ roundcube_package_state }}"
+    update_cache: yes
 
 - name: Deploy roundcube config template
   template:

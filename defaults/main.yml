@@ -1,5 +1,7 @@
 ---: ''
 roundcube_package: 'roundcube'
+roundcube_package_state: 'latest'
+
 roundcube_db_dsnw: ''
 roundcube_db_dsnr: ''
 roundcube_db_dsnw_noread: 'false'
