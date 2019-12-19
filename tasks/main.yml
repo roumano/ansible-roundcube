@@ -6,8 +6,8 @@
 
 - name: Deploy roundcube config template
   template:
-    src: templates/defaults.inc.php.j2
-    dest: /var/www/roundcube/config/defaults.inc.php
+    src: templates/config.inc.php.j2
+    dest: /var/www/roundcube/config/config.inc.php
     owner: www-data
     group: www-data
     mode: '0644'
