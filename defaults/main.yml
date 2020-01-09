@@ -143,7 +143,7 @@ roundcube_date_format: 'Y-m-d'
 roundcube_date_formats: "array('Y-m-d', 'Y/m/d', 'Y.m.d', 'd-m-Y', 'd/m/Y', 'd.m.Y', 'j.n.Y')"
 roundcube_time_format: 'H:i'
 roundcube_time_formats: "array('G:i', 'H:i', 'g:i a', 'h:i A')"
-roundcube_date_short: 'D H:i"'
+roundcube_date_short: 'D H:i'
 roundcube_date_long: 'Y-m-d H:i'
 roundcube_drafts_mbox: 'Drafts'
 roundcube_junk_mbox: 'Junk'
