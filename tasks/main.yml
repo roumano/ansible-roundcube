@@ -1,22 +1,166 @@
 ---
-- name: Install roundcube package
+- name: Install roundcube requirements
   apt:
     name: "{{ roundcube_package }}"
-    state: "{{ roundcube_package_state }}"
+    state: present
     update_cache: yes
+
+# https://github.com/roundcube/roundcubemail/releases
+- name: Downlowd Roundcube
+  get_url:
+    url: "{{ roundcube_url }}"
+    dest: /opt/
+    checksum: "{{ roundcube_checksum }}"
+
+- name: Install Roundcube
+  unarchive:
+    remote_src: yes
+    src: "/opt/roundcubemail-{{ roundcube_version }}-complete.tar.gz"
+    dest: /var/www/
+    owner: www-data
+    group: www-data
+    creates: "{{ roundcube_dest }}/config"
+
+- name: Apache configuration
+  lineinfile:
+    path: "{{ item.path }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  notify: reload apache
+  with_items:
+  - path: '/etc/apache2/sites-available/000-default.conf'
+    regexp: DocumentRoot
+    line: "        DocumentRoot {{ roundcube_dest }}"
+  - path: '/etc/apache2/sites-available/default-ssl.conf'
+    regexp: DocumentRoot
+    line: "        DocumentRoot {{ roundcube_dest }}"
 
 - name: Deploy roundcube config template
   template:
     src: templates/config.inc.php.j2
-    dest: /var/www/roundcube/config/config.inc.php
+    dest: "{{ roundcube_dest }}/config/config.inc.php"
     owner: www-data
     group: www-data
-    mode: '0644'
+    mode: 0644
 
-- name: Link logs to a sane location
+# TODO: handle path change of php aka : /etc/php/7.3/ & /etc/php/7.4/ ...
+- name: Php Configuration - Module Settings
+  ini_file:
+    path: /etc/php/7.3/apache2/php.ini
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+  notify: reload apache
+  with_items:
+  - section: Date
+    option: date.timezone
+    value: Europe/Paris
+
+- name: Php Configuration - General
+  lineinfile:
+    path: /etc/php/7.3/apache2/php.ini
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  notify: reload apache
+  with_items:
+  - regexp: memory_limit
+    line: 'memory_limit = 64M'
+  - regexp: upload_max_filesize
+    line: 'upload_max_filesize = 16M'
+  - regexp: post_max_size
+    line: 'post_max_size = 16M'
+  - regexp: '^zlib.output_compression'
+    line: 'zlib.output_compression = On'
+  - regexp: '^short_open_tag'
+    line: 'short_open_tag = On'
+  - regexp: '^session.gc_probability'
+    line: 'session.gc_probability = 1'
+#configure php 'short tag open' option to On
+## this is for php-radius module which uses short open tag in its php code
+
+- name: Log directory for Roundcube
   file:
-    src: '/var/www/roundcube/logs'
-    dest: '/var/log/roundcube'
+    path: /var/log/roundcube/
+    state: directory
     owner: www-data
     group: www-data
-    state: link
+    mode: 0755
+
+- name: embl logo
+  copy:
+    src: embl_logo.png
+    dest: "{{ roundcube_dest }}"
+
+#root@webmail3:/var/www/html/roundcubemail-1.4.3/plugins# mkdir radius_otp
+#root@webmail3:/var/www/html/roundcubemail-1.4.3/plugins# vim radius_otp/radius_otp.php
+
+# TODO
+# DB Schema:  NOT OK(Database schema differs)
+# Schema version: 2016112200 (required: 2019092900)
+# Updatable via : http://webmail.embl.fr/roundcubemail-1.4.3/installer/index.php?_step=3
+
+# http://webmail.embl.fr/roundcubemail-1.4.3/installer/
+# > Copy or download the following configuration and save it as config.inc.php within the /var/www/html/roundcubemail-1.4.3/config/ directory of your Roundcube installation.
+# > mysql://roundcubedb:racha0Fi@webappsql.embl.fr/roundcubedb';
+
+# radius_otp_plugin
+- name: radius_otp_plugin directory should exist
+  file:
+    path: "{{ roundcube_dest }}/plugins/radius_otp"
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: 0755
+
+## deliver javascript file
+- name: radius_otp_plugin javascript file should exist
+  copy:
+    src: radius_otp.js
+    dest: "{{ roundcube_dest }}/plugins/radius_otp/radius_otp.js"
+    owner: www-data
+    group: www-data
+    mode: 0755
+
+## deliver php file (with switch to turn on or off radius_otp module depending on internal/external
+### see wiki page Service:Webmail
+- name: radius_otp_plugin php file should exist
+  copy:
+    src: radius_otp.php
+    dest: "{{ roundcube_dest }}/plugins/radius_otp/radius_otp.php"
+    owner: www-data
+    group: www-data
+    mode: 0755
+
+- name: /etc/php-radius directory should exist
+  file:
+    path: /etc/php-radius
+    state: directory
+
+# deliver php-radius module server.conf files
+- name: php-radius module server.conf files - fortinet
+  copy:
+    src: server-fortinet.conf
+    dest: /etc/php-radius/server-fortinet.conf
+
+- name: php-radius module server.conf files - actividentity
+  copy:
+    src: server-actividentity.conf
+    dest: /etc/php-radius/server-actividentity.conf
+
+- name: /usr/share/php-radius directory should exist
+  file:
+    path: /usr/share/php-radius
+    state: directory
+
+# deliver php-radius-legacy library
+##  php-radius is too new for radios-opt plugin
+- name: deliver php-radius-legacy library
+  copy:
+    src: radius_authentication.inc.php
+    dest: /usr/share/php-radius/radius_authentication.inc.php
+
+
+# After completing the installation and the final tests please remove the whole installer folder from the document root of the webserver or make sure that enable_installer option in config.inc.php is disabled.
+# These files may expose sensitive configuration data like server passwords and encryption keys to the public. Make sure you cannot access this installer from your browser.
+
+# TODO fix this error : [18-Mar-2020 16:55:59 Europe/Paris] PHP Warning:  ldap_search(): Search: No such object in /var/www/roundcubemail-1.4.3/vendor/kolab/net_ldap3/lib/Net/LDAP3.php on line 2141
